@@ -1,11 +1,12 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { AlertCircle, ArrowRight, RotateCcw } from "lucide-react";
 import { Navbar } from "@/components/navbar";
 import Link from "next/link";
 
-export default function PaymentFailedPage() {
+function PaymentFailed() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderId = searchParams.get("order_id");
@@ -92,5 +93,13 @@ export default function PaymentFailedPage() {
         </div>
       </div>
     </>
+  );
+}
+
+export default function PaymentFailedPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <PaymentFailed />
+    </Suspense>
   );
 }

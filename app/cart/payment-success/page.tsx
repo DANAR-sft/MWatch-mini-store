@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { CheckCircle, ArrowRight, Package, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import Link from "next/link";
 import { broadcast, CHANNELS, EVENTS } from "@/lib/supabase/realtime";
 import { useAuth } from "@/lib/store/hookZustand";
 
-export default function CheckoutPage() {
+function Checkout() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderId = searchParams.get("order_id") ?? "";
@@ -293,5 +293,13 @@ export default function CheckoutPage() {
         </div>
       </div>
     </>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <Checkout />
+    </Suspense>
   );
 }

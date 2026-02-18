@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { IProduct } from "@/types/definitions";
+import Image from "next/image";
 import Link from "next/link";
 
 export function CardCategory({
@@ -23,11 +24,16 @@ export function CardCategory({
   return (
     <Card className="relative mx-auto w-full h-fit max-w-sm pt-0">
       <div className="absolute inset-0 z-30 aspect-video bg-black/35" />
-      <img
-        src={image_url}
-        alt="Event cover"
-        className="relative z-20 aspect-video w-full object-cover brightness-60 grayscale dark:brightness-40"
-      />
+      {image_url.map((url, index) => (
+        <Image
+          key={index}
+          src={url}
+          alt={`Image ${index + 1} of ${name}`}
+          className="relative z-20 aspect-video w-full object-cover brightness-60 grayscale dark:brightness-40"
+          layout="fill"
+          objectFit="cover"
+        />
+      ))}
       <CardHeader>
         <CardAction>
           <Badge variant="secondary">Featured</Badge>

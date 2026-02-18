@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   subscribeToPostgresChannel,
@@ -31,7 +31,7 @@ declare global {
   }
 }
 
-export default function PaymentPendingPage() {
+function PaymentPending() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderId = searchParams.get("order_id");
@@ -264,5 +264,13 @@ export default function PaymentPendingPage() {
         </div>
       </div>
     </>
+  );
+}
+
+export default function PaymentPendingPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <PaymentPending />
+    </Suspense>
   );
 }
