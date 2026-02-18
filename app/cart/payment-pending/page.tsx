@@ -158,26 +158,26 @@ function PaymentPending() {
     }
   }
 
-  async function handleCancelOrder() {
-    if (!orderId) return;
+  // async function handleCancelOrder() {
+  //   if (!orderId) return;
 
-    const confirmed = window.confirm(
-      "Are you sure you want to cancel this order?",
-    );
-    if (!confirmed) return;
+  //   const confirmed = window.confirm(
+  //     "Are you sure you want to cancel this order?",
+  //   );
+  //   if (!confirmed) return;
 
-    setIsCancelling(true);
-    try {
-      await actionCancelOrder(orderId);
-      router.push(`/cart/payment-failed?order_id=${orderId}`);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to cancel order";
-      alert(message);
-    } finally {
-      setIsCancelling(false);
-    }
-  }
+  //   setIsCancelling(true);
+  //   try {
+  //     await actionCancelOrder(orderId);
+  //     router.push(`/cart/payment-failed?order_id=${orderId}`);
+  //   } catch (error) {
+  //     const message =
+  //       error instanceof Error ? error.message : "Failed to cancel order";
+  //     alert(message);
+  //   } finally {
+  //     setIsCancelling(false);
+  //   }
+  // }
 
   return (
     <>
@@ -239,14 +239,14 @@ function PaymentPending() {
               >
                 Continue Shopping
               </Link>
-              <button
+              {/* <button
                 onClick={handleCancelOrder}
                 disabled={!orderId || isCancelling}
                 className="flex items-center justify-center px-8 py-3 border-2 border-red-500 text-red-500 font-bold rounded-lg hover:bg-red-500 hover:text-white disabled:border-slate-300 disabled:text-slate-300 disabled:cursor-not-allowed transition-all duration-300 gap-2"
               >
                 <XCircle className="w-5 h-5" />
                 {isCancelling ? "Cancelling..." : "Cancel Order"}
-              </button>
+              </button> */}
             </div>
           </div>
 
