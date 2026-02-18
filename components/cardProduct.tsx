@@ -69,7 +69,7 @@ export function CardProduct({
   };
 
   return (
-    <Card className="relative w-full h-100 max-w-sm pt-0">
+    <Card className="relative w-full h-fit md:h-100 max-w-sm pt-0">
       <Link href={`/products/detail-product/${id}`}>
         <div className="absolute inset-0 z-30 aspect-video bg-black/35" />
         <img

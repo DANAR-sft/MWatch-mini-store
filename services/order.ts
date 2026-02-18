@@ -74,6 +74,7 @@ function getProductFromCartItem(item: CartItemForCheckout) {
 
 export async function processCheckout(
   shippingAddress: string,
+  shippingMethod: "standard" | "express" = "standard",
 ): Promise<string> {
   if (!shippingAddress.trim()) {
     throw new Error("shipping_address is required");
@@ -142,6 +143,10 @@ export async function processCheckout(
 
     totalAmount += product.price * item.quantity;
   }
+
+  // Add shipping cost
+  const shippingCost = shippingMethod === "express" ? 50000 : 20000;
+  totalAmount += shippingCost;
 
   // 4. Create order
   const admin = createAdminClient();

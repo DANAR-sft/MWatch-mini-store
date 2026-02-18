@@ -15,6 +15,10 @@ const CheckoutSchema = z
     full_name: z.string().min(1).optional(),
     email: z.string().email().optional(),
     phone: z.string().min(5).optional(),
+    shipping_method: z
+      .enum(["standard", "express"])
+      .optional()
+      .default("standard"),
   })
   .strict();
 
@@ -36,7 +40,10 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const orderId = await processCheckout(parsed.data.shipping_address);
+    const orderId = await processCheckout(
+      parsed.data.shipping_address,
+      parsed.data.shipping_method,
+    );
 
     const order = await getOrderByIdForCurrentUser(orderId);
 

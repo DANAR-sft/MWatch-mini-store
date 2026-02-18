@@ -186,6 +186,7 @@ export default function PaymentPage() {
           full_name: formData.full_name,
           email: formData.email,
           phone: formData.phone,
+          shipping_method: formData.shipping_method,
         }),
       });
 
