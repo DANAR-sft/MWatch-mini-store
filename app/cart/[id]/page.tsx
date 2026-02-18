@@ -1,18 +1,10 @@
 "use client";
 
 import { Navbar } from "@/components/navbar";
-import { useEffect, Suspense, useState } from "react";
-import { useCart, useAuth, useProfile } from "@/lib/store/hookZustand";
+import { useEffect, Suspense, useMemo, useState } from "react";
+import { useCart, useAuth } from "@/lib/store/hookZustand";
 import { useParams, useRouter } from "next/navigation";
-import { IProduct, ICartItem } from "@/types/definitions";
-import {
-  Trash2,
-  Plus,
-  Minus,
-  ShoppingCart,
-  ArrowLeft,
-  ArrowRight,
-} from "lucide-react";
+import { Trash2, ShoppingCart, ArrowLeft, ArrowRight } from "lucide-react";
 import { formatIDR } from "@/lib/utils";
 import Link from "next/link";
 
@@ -22,8 +14,13 @@ function Cart() {
   const id = param.id as string;
   const { cart, fetchCart, deleteCartItem, updateQuantity } = useCart();
   const { user } = useAuth();
-  const { profile } = useProfile();
   const [isLoading, setIsLoading] = useState(true);
+  const [isUpdatingMap, setIsUpdatingMap] = useState<Record<string, boolean>>(
+    {},
+  );
+  const [isDeletingMap, setIsDeletingMap] = useState<Record<string, boolean>>(
+    {},
+  );
 
   useEffect(() => {
     const fetchData = async () => {
@@ -39,10 +36,13 @@ function Cart() {
   const handleDeleteItem = async (cartItemId: string) => {
     if (!user) return;
     try {
+      setIsDeletingMap((m) => ({ ...m, [cartItemId]: true }));
       await deleteCartItem(cartItemId, user.id);
     } catch (error) {
       console.error("Error deleting item:", error);
-      alert("Failed to delete item from cart.");
+      alert("Failed to delete item from cart. Please refresh and try again.");
+    } finally {
+      setIsDeletingMap((m) => ({ ...m, [cartItemId]: false }));
     }
   };
 
@@ -63,51 +63,22 @@ function Cart() {
     }
 
     try {
+      setIsUpdatingMap((m) => ({ ...m, [cartItemId]: true }));
       await updateQuantity(cartId, productId, newQuantity, user.id);
     } catch (error) {
       console.error("Error updating quantity:", error);
-      alert("Failed to update quantity.");
+      alert("Failed to update quantity. Please refresh and try again.");
+    } finally {
+      setIsUpdatingMap((m) => ({ ...m, [cartItemId]: false }));
     }
   };
 
-  const [sortedItems, setSortedItems] = useState<ICartItem["cart_items"]>([]);
-  const latestCartItems = cart[0]?.cart_items || [];
-
-  useEffect(() => {
-    // Initial sort
-    if (sortedItems?.length === 0 && latestCartItems.length > 0) {
-      const initialItems = [...latestCartItems].sort(
-        (a, b) => b.quantity - a.quantity,
-      );
-      setSortedItems(initialItems);
-    }
-    // Handle updates
-    else if (latestCartItems.length > 0) {
-      setSortedItems((currentItems) => {
-        const itemMap = new Map(latestCartItems.map((item) => [item.id, item]));
-
-        // Update existing items and remove deleted ones
-        const updatedCurrentItems = (currentItems || [])
-          .map((item) => itemMap.get(item.id))
-          .filter(
-            (item): item is NonNullable<typeof item> => item !== undefined,
-          );
-
-        // Find new items that weren't in the current list
-        const currentIds = new Set(currentItems?.map((item) => item.id));
-        const newItems = latestCartItems.filter(
-          (item) => !currentIds.has(item.id),
-        );
-
-        // Add new items at the end (or specific position)
-        // If we want new items to respect the sort order only on refresh,
-        // they should probably just be appended for now
-        return [...updatedCurrentItems, ...newItems];
-      });
-    }
+  const cartItems = useMemo(() => {
+    const latestCartItems = cart[0]?.cart_items;
+    const items = Array.isArray(latestCartItems) ? [...latestCartItems] : [];
+    items.sort((a, b) => b.quantity - a.quantity);
+    return items;
   }, [cart]);
-
-  const cartItems = sortedItems || [];
 
   const subtotal = cartItems.reduce((total, item) => {
     const product = Array.isArray(item.products)
@@ -123,7 +94,7 @@ function Cart() {
         <Navbar />
         <div className="flex items-center justify-center w-full h-screen">
           <div className="text-center">
-            <div className="w-12 h-12 bg-gradient-to-br from-slate-300 to-slate-500 rounded-full mx-auto mb-4 animate-spin"></div>
+            <div className="w-12 h-12 bg-linear-to-br from-slate-300 to-slate-500 rounded-full mx-auto mb-4 animate-spin"></div>
             <p className="text-slate-600 font-medium">Loading your cart...</p>
           </div>
         </div>
@@ -227,7 +198,8 @@ function Cart() {
                                     item.id,
                                   )
                                 }
-                                className="text-slate-600 hover:text-black hover:cursor-pointer hover:scale-110 transition font-bold text-lg"
+                                disabled={isUpdatingMap[item.id]}
+                                className="text-slate-600 hover:text-black hover:cursor-pointer hover:scale-110 transition font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 −
                               </button>
@@ -244,7 +216,10 @@ function Cart() {
                                     item.id,
                                   );
                                 }}
-                                disabled={product.stock <= item.quantity}
+                                disabled={
+                                  product.stock <= item.quantity ||
+                                  isUpdatingMap[item.id]
+                                }
                                 className="text-slate-600 hover:text-black hover:cursor-pointer hover:scale-110 transition font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 +
@@ -264,7 +239,8 @@ function Cart() {
                             </div>
                             <button
                               onClick={() => handleDeleteItem(item.id)}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition font-bold"
+                              disabled={isDeletingMap[item.id]}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               <Trash2 className="w-5 h-5" />
                             </button>
@@ -351,7 +327,7 @@ export default function CartPage() {
       fallback={
         <div className="flex items-center justify-center w-full h-screen">
           <div className="text-center">
-            <div className="w-12 h-12 bg-gradient-to-br from-slate-300 to-slate-500 rounded-full mx-auto mb-4 animate-spin"></div>
+            <div className="w-12 h-12 bg-linear-to-br from-slate-300 to-slate-500 rounded-full mx-auto mb-4 animate-spin"></div>
             <p className="text-slate-600 font-medium">Loading...</p>
           </div>
         </div>

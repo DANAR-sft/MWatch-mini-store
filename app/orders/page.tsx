@@ -38,15 +38,22 @@ export default function Page() {
   const [orders, setOrders] = useState<IOrder[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const itemsPerPage = 10;
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+  const [processingOrderIds, setProcessingOrderIds] = useState<
+    Record<string, boolean>
+  >({});
 
   // Move loadOrders outside useEffect to avoid stale closure
   const loadOrders = async () => {
+    setIsLoadingOrders(true);
     try {
       const data = await actionGetCurrentUserOrders();
       setOrders(data);
       console.log("[Orders] Loaded orders:", data.length);
     } catch (error) {
       console.error("Failed to load orders", error);
+    } finally {
+      setIsLoadingOrders(false);
     }
   };
 
@@ -142,6 +149,7 @@ export default function Page() {
   }, [loadOrders]);
 
   async function handleReceive(orderId: string) {
+    setProcessingOrderIds((s) => ({ ...s, [orderId]: true }));
     try {
       await actionMarkOrderCompleted(orderId);
       setOrders((prev) =>
@@ -163,6 +171,8 @@ export default function Page() {
       const message =
         error instanceof Error ? error.message : "Gagal menerima barang";
       toast.error(message);
+    } finally {
+      setProcessingOrderIds((s) => ({ ...s, [orderId]: false }));
     }
   }
 
@@ -228,7 +238,16 @@ export default function Page() {
           </div>
 
           {/* Orders List or Empty State */}
-          {orders.length === 0 ? (
+          {isLoadingOrders ? (
+            <div className="space-y-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="bg-white rounded-xl border-2 border-slate-200 p-6 shadow-sm animate-pulse h-28"
+                />
+              ))}
+            </div>
+          ) : orders.length === 0 ? (
             <div className="bg-white rounded-xl border-2 border-slate-200 p-12 text-center shadow-sm">
               <Package className="w-16 h-16 text-slate-300 mx-auto mb-4" />
               <h3 className="text-2xl font-bold text-black mb-2">
@@ -329,11 +348,16 @@ export default function Page() {
                           </p>
                         </div>
                         <button
-                          disabled={order.status !== "shipped"}
+                          disabled={
+                            order.status !== "shipped" ||
+                            !!processingOrderIds[order.id]
+                          }
                           onClick={() => handleReceive(order.id)}
-                          className="w-full sm:w-auto px-6 py-3 bg-black text-white font-bold rounded-lg hover:bg-slate-900 disabled:bg-slate-300 disabled:cursor-not-allowed transition hover:scale-105 hover:shadow-lg flex items-center justify-center gap-2"
+                          className={`w-full sm:w-auto px-6 py-3 bg-black text-white font-bold rounded-lg hover:bg-slate-900 disabled:bg-slate-300 disabled:cursor-not-allowed transition hover:scale-105 hover:shadow-lg flex items-center justify-center gap-2 ${processingOrderIds[order.id] ? "opacity-70 cursor-wait" : ""}`}
                         >
-                          {order.status === "shipped" ? (
+                          {processingOrderIds[order.id] ? (
+                            "Processing..."
+                          ) : order.status === "shipped" ? (
                             <>
                               <CheckCircle className="w-5 h-5" />
                               Mark as Received

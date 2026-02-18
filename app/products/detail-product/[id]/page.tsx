@@ -36,6 +36,7 @@ function DetailProduct() {
   const [quantity, setQuantity] = useState(1);
   const [isAdded, setIsAdded] = useState(false);
   const [isFavorited, setIsFavorited] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
 
   const { productById, fetchProductById, products, fetchProducts } =
     useProducts();
@@ -121,6 +122,7 @@ function DetailProduct() {
       return;
     }
 
+    setIsAdding(true);
     try {
       const latestCart = cart.length ? cart : await fetchCart(user.id);
       const cartId = latestCart?.[0]?.id;
@@ -161,6 +163,8 @@ function DetailProduct() {
     } catch (error) {
       console.error("Error adding item to cart:", error);
       toast.error("Failed to add item to cart. Please try again.");
+    } finally {
+      setIsAdding(false);
     }
   };
 
@@ -340,14 +344,19 @@ function DetailProduct() {
                 {profile?.role !== "admin" && (
                   <button
                     onClick={handleAddToCart}
-                    disabled={!productById.stock}
+                    disabled={!productById.stock || isAdding}
                     className={`w-full py-4 px-6 rounded-lg font-bold text-lg transition-all duration-300 flex items-center justify-center gap-2 ${
                       productById.stock > 0
                         ? "bg-black text-white hover:bg-slate-900 hover:shadow-lg hover:scale-105"
                         : "bg-slate-300 text-slate-600 cursor-not-allowed"
-                    }`}
+                    } ${isAdding ? "opacity-70 cursor-wait" : ""}`}
                   >
-                    {isAdded ? (
+                    {isAdding ? (
+                      <>
+                        <ShoppingCart className="w-5 h-5" />
+                        Adding...
+                      </>
+                    ) : isAdded ? (
                       <>
                         <Check className="w-5 h-5" />
                         Added to Cart

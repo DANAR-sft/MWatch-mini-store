@@ -81,14 +81,21 @@ export default function Page() {
   const router = useRouter();
   const [allOrders, setAllOrders] = useState<IOrder[]>([]);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+  const [processingOrderIds, setProcessingOrderIds] = useState<
+    Record<string, boolean>
+  >({});
 
   // Function to load orders
   async function loadOrders() {
+    setIsLoadingOrders(true);
     try {
       const orders = await actionGetAllOrdersForAdmin();
       setAllOrders(orders);
     } catch (error) {
       console.error("Failed to load orders", error);
+    } finally {
+      setIsLoadingOrders(false);
     }
   }
 
@@ -208,6 +215,7 @@ export default function Page() {
   }
 
   async function handleShipOrder(orderId: string) {
+    setProcessingOrderIds((s) => ({ ...s, [orderId]: true }));
     try {
       // Find the order to get user_id for broadcasting
       const order = allOrders.find((o) => o.id === orderId);
@@ -231,6 +239,20 @@ export default function Page() {
       const message =
         error instanceof Error ? error.message : "Gagal update status order";
       toast.error(message);
+    } finally {
+      setProcessingOrderIds((s) => ({ ...s, [orderId]: false }));
+    }
+  }
+
+  async function handleShipAndNotify(orderId: string, name: string) {
+    setProcessingOrderIds((s) => ({ ...s, [orderId]: true }));
+    try {
+      await handleShipOrder(orderId);
+      await sendEmail(name);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setProcessingOrderIds((s) => ({ ...s, [orderId]: false }));
     }
   }
 
@@ -362,7 +384,16 @@ export default function Page() {
             </div>
 
             {/* Orders List */}
-            {filteredOrders.length === 0 ? (
+            {isLoadingOrders ? (
+              <div className="grid gap-4">
+                {Array.from({ length: 4 }).map((_, idx) => (
+                  <div
+                    key={idx}
+                    className="bg-white rounded-xl border-2 border-slate-200 p-6 shadow-sm animate-pulse h-28"
+                  />
+                ))}
+              </div>
+            ) : filteredOrders.length === 0 ? (
               <div className="bg-white rounded-xl border-2 border-slate-200 p-12 text-center shadow-sm">
                 <Package className="w-16 h-16 text-slate-300 mx-auto mb-4" />
                 <h3 className="text-2xl font-bold text-black mb-2">
@@ -450,13 +481,22 @@ export default function Page() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleShipOrder(order.id);
-                              sendEmail(order.shipping_address || "Customer");
+                              handleShipAndNotify(
+                                order.id,
+                                order.shipping_address || "Customer",
+                              );
                             }}
-                            className="w-full md:w-auto px-6 py-3 bg-black text-white font-bold rounded-lg hover:bg-slate-900 transition hover:scale-105 hover:shadow-lg flex items-center justify-center gap-2"
+                            disabled={!!processingOrderIds[order.id]}
+                            className={`w-full md:w-auto px-6 py-3 bg-black text-white font-bold rounded-lg transition hover:scale-105 hover:shadow-lg flex items-center justify-center gap-2 ${processingOrderIds[order.id] ? "opacity-70 cursor-wait" : "hover:bg-slate-900"}`}
                           >
-                            <Truck className="w-5 h-5" />
-                            Mark as Shipped
+                            {processingOrderIds[order.id] ? (
+                              "Processing..."
+                            ) : (
+                              <>
+                                <Truck className="w-5 h-5" />
+                                Mark as Shipped
+                              </>
+                            )}
                           </button>
                         )}
                       </div>

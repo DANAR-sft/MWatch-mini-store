@@ -74,6 +74,8 @@ export default function OrderDetailPage() {
 
   const [order, setOrder] = useState<OrderDetailRecord | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   async function loadOrder() {
     try {
@@ -97,6 +99,7 @@ export default function OrderDetailPage() {
   }, [orderId]);
 
   async function sendEmail(name: string) {
+    setIsSendingEmail(true);
     try {
       const response = await fetch("/api/send", {
         method: "POST",
@@ -112,12 +115,14 @@ export default function OrderDetailPage() {
     } catch (error) {
       console.error("Failed to send email:", error);
       toast.error("Failed to send email");
+    } finally {
+      setIsSendingEmail(false);
     }
   }
 
   async function handleShipOrder() {
     if (!order) return;
-
+    setIsProcessing(true);
     try {
       await actionMarkOrderShipped(order.id);
       setOrder((prev) => (prev ? { ...prev, status: "shipped" } : prev));
@@ -134,6 +139,21 @@ export default function OrderDetailPage() {
       const message =
         error instanceof Error ? error.message : "Gagal update status order";
       toast.error(message);
+    } finally {
+      setIsProcessing(false);
+    }
+  }
+
+  async function handleShipAndNotify() {
+    if (!order) return;
+    setIsProcessing(true);
+    try {
+      await handleShipOrder();
+      await sendEmail(order.shipping_address || "Customer");
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsProcessing(false);
     }
   }
 
@@ -362,14 +382,18 @@ export default function OrderDetailPage() {
 
                 {order.status === "paid" && (
                   <button
-                    onClick={() => {
-                      handleShipOrder();
-                      sendEmail(order.shipping_address || "Customer");
-                    }}
-                    className="w-full md:w-auto px-6 py-3 bg-black text-white font-bold rounded-lg hover:bg-slate-900 transition hover:scale-105 hover:shadow-lg flex items-center justify-center gap-2"
+                    onClick={() => handleShipAndNotify()}
+                    disabled={isProcessing}
+                    className={`w-full md:w-auto px-6 py-3 bg-black text-white font-bold rounded-lg transition hover:scale-105 hover:shadow-lg flex items-center justify-center gap-2 ${isProcessing ? "opacity-70 cursor-wait" : "hover:bg-slate-900"}`}
                   >
-                    <Truck className="w-5 h-5" />
-                    Mark as Shipped
+                    {isProcessing ? (
+                      "Processing..."
+                    ) : (
+                      <>
+                        <Truck className="w-5 h-5" />
+                        Mark as Shipped
+                      </>
+                    )}
                   </button>
                 )}
               </div>

@@ -11,6 +11,7 @@ import {
 import { formatIDR } from "@/lib/utils";
 import { IProduct, IPostCartItems } from "@/types/definitions";
 import { useCart, useAuth, useProfile } from "@/lib/store/hookZustand";
+import { useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -26,7 +27,10 @@ export function CardProduct({
   const { user } = useAuth();
   const { postToCart, fetchCart, cart } = useCart();
   const { profile } = useProfile();
+  const [isAdding, setIsAdding] = useState(false);
+
   const handleAddToCart = async () => {
+    setIsAdding(true);
     if (!user) {
       toast.error("Please log in to add items to your cart.");
       return;
@@ -59,6 +63,8 @@ export function CardProduct({
     } catch (error) {
       console.error("Error adding item to cart:", error);
       toast.error("Failed to add item to cart. Please try again.");
+    } finally {
+      setIsAdding(false);
     }
   };
 
@@ -84,8 +90,12 @@ export function CardProduct({
       <CardFooter className="flex justify-between">
         <CardDescription>Rp{formatIDR(price)}</CardDescription>
         {profile?.role !== "admin" ? (
-          <Button className="w-fit" onClick={handleAddToCart}>
-            add to cart
+          <Button
+            className="w-fit"
+            onClick={handleAddToCart}
+            disabled={isAdding}
+          >
+            {isAdding ? "Adding..." : "add to cart"}
           </Button>
         ) : null}
       </CardFooter>

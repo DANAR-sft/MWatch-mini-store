@@ -2,26 +2,20 @@
 
 import { Navbar } from "@/components/navbar";
 import { CardProduct } from "@/components/cardProduct";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { IProduct } from "@/types/definitions";
-import { useSearch, useProducts } from "@/lib/store/hookZustand";
+import { useSearch } from "@/lib/store/hookZustand";
 import { Input } from "@/components/ui/input";
 import Footer from "@/components/footer";
-import {
-  Search,
-  SlidersHorizontal,
-  X,
-  Package,
-  DollarSign,
-  Sparkles,
-  Clock,
-} from "lucide-react";
+import { Search } from "lucide-react";
 import {
   subscribeToChannel,
   unsubscribeFromChannel,
   CHANNELS,
   EVENTS,
 } from "@/lib/supabase/realtime";
+
+type ProductWithCreatedAt = IProduct & { created_at?: string | null };
 
 export default function Page() {
   const {
@@ -32,7 +26,6 @@ export default function Page() {
     isSearching,
     isNotFound,
     allItems,
-    setIsFound,
     setAllItems,
     setIsSearching,
     setIsLoading,
@@ -40,91 +33,123 @@ export default function Page() {
     temporaryQuery,
     setTemporaryQuery,
   } = useSearch();
-  const { productsByCategory, fetchProductsByCategory, fetchProductsBySort } =
-    useProducts();
   const [category, setCategory] = useState<string>("All");
   const [sortBy, setSortBy] = useState<string>("all");
 
-  async function filterByCategory(category: string) {
-    if (category === "All" && sortBy === "all") {
-      setItems(
-        allItems.filter((product) =>
-          product.name.toLowerCase().includes(temporaryQuery.toLowerCase()),
-        ),
-      );
-    } else {
-      const byCategory = await fetchProductsByCategory(category);
-      setItems(byCategory);
-    }
-  }
+  const filterStateRef = useRef({
+    temporaryQuery: "",
+    category: "All",
+    sortBy: "all",
+  });
+  const allItemsRef = useRef<ProductWithCreatedAt[]>([]);
 
-  async function filterBySort(sortBy: string) {
-    if (sortBy === "asc") {
-      const bySort = await fetchProductsBySort("price", "asc");
-      setItems(bySort);
-    } else if (sortBy === "desc") {
-      const bySort = await fetchProductsBySort("price", "desc");
-      setItems(bySort);
-    } else if (sortBy === "newest") {
-      const bySort = await fetchProductsBySort("created_at", "desc");
-      setItems(bySort);
-    } else if (sortBy === "oldest") {
-      const bySort = await fetchProductsBySort("created_at", "asc");
-      setItems(bySort);
-    }
-  }
+  useEffect(() => {
+    filterStateRef.current = { temporaryQuery, category, sortBy };
+  }, [temporaryQuery, category, sortBy]);
 
-  async function filterBySearch(query: string) {
-    const term = query.trim().toLowerCase();
-    if (term === "") {
-      setItems(allItems);
-      setIsSearching(false);
-      setIsNotFound(false);
-      return;
-    }
-    setIsSearching(true);
+  useEffect(() => {
+    allItemsRef.current = (allItems as ProductWithCreatedAt[]) ?? [];
+  }, [allItems]);
 
-    setTimeout(() => {
-      const filtered = allItems.filter((product) =>
-        product.name.toLowerCase().includes(term),
-      );
-      setItems(filtered);
-      setIsSearching(false);
-      if (filtered.length === 0) {
-        setIsNotFound(true);
-      } else {
-        setIsNotFound(false);
+  const computeAndSetItems = useCallback(
+    (baseItems: ProductWithCreatedAt[]) => {
+      const {
+        temporaryQuery: query,
+        category: selectedCategory,
+        sortBy: selectedSort,
+      } = filterStateRef.current;
+
+      const term = (query ?? "").trim().toLowerCase();
+      const hasBaseItems = baseItems.length > 0;
+
+      let next = [...baseItems];
+
+      if (selectedCategory !== "All") {
+        const normalizedCategory = selectedCategory.trim().toLowerCase();
+        next = next.filter(
+          (product) =>
+            (product.category ?? "").trim().toLowerCase() ===
+            normalizedCategory,
+        );
       }
-    }, 300);
-  }
+
+      if (term !== "") {
+        next = next.filter((product) =>
+          (product.name ?? "").toLowerCase().includes(term),
+        );
+      }
+
+      if (selectedSort === "asc") {
+        next.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
+      } else if (selectedSort === "desc") {
+        next.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
+      } else if (selectedSort === "newest") {
+        next.sort((a, b) => {
+          const aTime = a.created_at ? Date.parse(a.created_at) : 0;
+          const bTime = b.created_at ? Date.parse(b.created_at) : 0;
+          return bTime - aTime;
+        });
+      } else if (selectedSort === "oldest") {
+        next.sort((a, b) => {
+          const aTime = a.created_at ? Date.parse(a.created_at) : 0;
+          const bTime = b.created_at ? Date.parse(b.created_at) : 0;
+          return aTime - bTime;
+        });
+      }
+
+      setItems(next as IProduct[]);
+
+      const hasActiveFilters =
+        term !== "" || selectedCategory !== "All" || selectedSort !== "all";
+      setIsNotFound(hasBaseItems && hasActiveFilters && next.length === 0);
+    },
+    [setItems, setIsNotFound],
+  );
 
   useEffect(() => {
-    setCategory("All");
-    setSortBy("all");
+    if (allItemsRef.current.length > 0) return;
 
-    if (!allItems || allItems.length === 0) {
-      const fetchAndFilter = async () => {
-        setIsLoading(true);
-        const all = await fetchItems();
-        setAllItems(all);
-        setItems(all);
-        setIsLoading(false);
-        filterBySearch(temporaryQuery);
-      };
-      fetchAndFilter();
+    let isCancelled = false;
+    const fetchAll = async () => {
+      setIsLoading(true);
+      const all = await fetchItems();
+      if (isCancelled) return;
+      setAllItems(all);
+      allItemsRef.current = all as ProductWithCreatedAt[];
+      computeAndSetItems(allItemsRef.current);
+      setIsLoading(false);
+    };
+
+    fetchAll();
+    return () => {
+      isCancelled = true;
+    };
+  }, [fetchItems, setAllItems, setIsLoading, computeAndSetItems]);
+
+  useEffect(() => {
+    if (!allItems || allItems.length === 0) return;
+    computeAndSetItems(allItems as ProductWithCreatedAt[]);
+  }, [allItems, category, sortBy, computeAndSetItems]);
+
+  useEffect(() => {
+    if (!allItemsRef.current || allItemsRef.current.length === 0) return;
+    const term = (temporaryQuery ?? "").trim();
+    if (term === "") {
+      setIsSearching(false);
+      computeAndSetItems(allItemsRef.current);
       return;
     }
 
-    filterBySearch(temporaryQuery);
-  }, [temporaryQuery, allItems]);
+    setIsSearching(true);
+    const timeoutId = setTimeout(() => {
+      computeAndSetItems(allItemsRef.current);
+      setIsSearching(false);
+    }, 300);
 
-  useEffect(() => {
-    filterByCategory(category);
-  }, [category]);
-
-  useEffect(() => {
-    filterBySort(sortBy);
-  }, [sortBy]);
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [temporaryQuery, setIsSearching, computeAndSetItems]);
 
   // Subscribe to product/stock updates
   useEffect(() => {
@@ -201,7 +226,8 @@ export default function Page() {
                 onChange={(e) => setTemporaryQuery(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
-                    filterBySearch(temporaryQuery);
+                    setIsSearching(false);
+                    computeAndSetItems(allItemsRef.current);
                   }
                 }}
               />

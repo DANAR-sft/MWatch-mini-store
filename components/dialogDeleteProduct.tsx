@@ -11,11 +11,14 @@ import { Button } from "./ui/button";
 import { useProducts } from "@/lib/store/hookZustand";
 import { toast } from "sonner";
 import { broadcast, CHANNELS, EVENTS } from "@/lib/supabase/realtime";
+import { useState } from "react";
 
 export function DialogDeleteProduct({ id }: { id: string }) {
   const { deleteProduct } = useProducts();
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = async () => {
+    setIsDeleting(true);
     try {
       await deleteProduct(id);
       toast.success("Product deleted successfully");
@@ -29,6 +32,8 @@ export function DialogDeleteProduct({ id }: { id: string }) {
     } catch (error) {
       console.error("Failed to delete product:", error);
       toast.error("Failed to delete product");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -46,8 +51,12 @@ export function DialogDeleteProduct({ id }: { id: string }) {
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="destructive" onClick={handleDelete}>
-            Delete
+          <Button
+            variant="destructive"
+            onClick={handleDelete}
+            disabled={isDeleting}
+          >
+            {isDeleting ? "Deleting..." : "Delete"}
           </Button>
         </DialogFooter>
       </DialogContent>
