@@ -32,7 +32,6 @@ export default function Page() {
   useEffect(() => {
     fetchProducts();
 
-    // Subscribe to product changes
     const channel = subscribeToChannel(
       CHANNELS.PRODUCTS,
       [EVENTS.STOCK_UPDATED, EVENTS.PRODUCT_CREATED, EVENTS.PRODUCT_DELETED],

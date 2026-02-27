@@ -7,7 +7,15 @@ import { IProduct } from "@/types/definitions";
 import { useSearch } from "@/lib/store/hookZustand";
 import { Input } from "@/components/ui/input";
 import Footer from "@/components/footer";
-import { Search } from "lucide-react";
+import { Search, SlidersHorizontal, Filter } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
 import {
   subscribeToChannel,
   unsubscribeFromChannel,
@@ -215,52 +223,129 @@ export default function Page() {
       <div className="sticky top-30 md:top-15 z-40 bg-white border-b border-slate-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-6">
           <div className="flex flex-col gap-4">
-            {/* Search Bar */}
-            <div className="relative group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-slate-600 transition-colors" />
-              <Input
-                id="search"
-                placeholder="Search products..."
-                className="pl-12 pr-4 py-3 rounded-lg border-2 border-slate-300 focus:border-slate-600 focus:outline-none transition-all text-slate-900 placeholder:text-slate-500 font-medium"
-                type="search"
-                onChange={(e) => setTemporaryQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    setIsSearching(false);
-                    computeAndSetItems(allItemsRef.current);
-                  }
-                }}
-              />
+            {/* Mobile View: Search + Filter Button */}
+            <div className="flex md:hidden gap-2">
+              <div className="relative flex-1 group">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input
+                  id="search-mobile"
+                  placeholder="Search..."
+                  className="pl-10 pr-4 py-2 h-11 rounded-lg border-2 border-slate-200 focus:border-slate-600 focus:outline-none transition-all text-slate-900"
+                  type="search"
+                  value={temporaryQuery}
+                  onChange={(e) => setTemporaryQuery(e.target.value)}
+                />
+              </div>
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="h-11 px-3 border-2 border-slate-200 text-slate-700"
+                  >
+                    <SlidersHorizontal className="w-5 h-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+                  <SheetHeader className="mb-6">
+                    <SheetTitle className="text-2xl font-bold flex items-center gap-2">
+                      <Filter className="w-5 h-5" /> Filters
+                    </SheetTitle>
+                  </SheetHeader>
+                  <div className="flex flex-col gap-6 px-4">
+                    <div className="space-y-3">
+                      <label className="text-sm font-semibold text-slate-900 uppercase tracking-wider">
+                        Category
+                      </label>
+                      <select
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-slate-900 bg-slate-50 font-medium focus:border-slate-600 focus:outline-none transition-all"
+                      >
+                        <option value="All">All Categories</option>
+                        <option value="Man">Man</option>
+                        <option value="Women">Women</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-3">
+                      <label className="text-sm font-semibold text-slate-900 uppercase tracking-wider">
+                        Sort By
+                      </label>
+                      <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-slate-900 bg-slate-50 font-medium focus:border-slate-600 focus:outline-none transition-all"
+                      >
+                        <option value="all">Default Sorting</option>
+                        <option value="asc">Price: Low to High</option>
+                        <option value="desc">Price: High to Low</option>
+                        <option value="newest">Newest Arrival</option>
+                        <option value="oldest">Oldest First</option>
+                      </select>
+                    </div>
+
+                    <div className="mt-4 p-4 bg-slate-100 rounded-xl">
+                      <p className="text-sm font-medium text-slate-600">
+                        Showing{" "}
+                        <span className="text-slate-900 font-bold">
+                          {items.length}
+                        </span>{" "}
+                        products
+                      </p>
+                    </div>
+                  </div>
+                </SheetContent>
+              </Sheet>
             </div>
 
-            {/* Category and Sort - Responsive */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="px-4 py-3 border-2 border-slate-300 rounded-lg text-sm md:text-base font-medium text-slate-900 bg-white hover:border-slate-500 focus:border-slate-600 focus:outline-none transition-all cursor-pointer"
-              >
-                <option value="All">All Categories</option>
-                <option value="Man">Man</option>
-                <option value="Women">Women</option>
-              </select>
+            {/* Desktop View: Full Search + Filters */}
+            <div className="hidden md:flex flex-col gap-4">
+              <div className="relative group">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-slate-600 transition-colors" />
+                <Input
+                  id="search-desktop"
+                  placeholder="Search products..."
+                  className="pl-12 pr-4 py-3 rounded-lg border-2 border-slate-300 focus:border-slate-600 focus:outline-none transition-all text-slate-900 placeholder:text-slate-500 font-medium"
+                  type="search"
+                  value={temporaryQuery}
+                  onChange={(e) => setTemporaryQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      setIsSearching(false);
+                      computeAndSetItems(allItemsRef.current);
+                    }
+                  }}
+                />
+              </div>
 
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="px-4 py-3 border-2 border-slate-300 rounded-lg text-sm md:text-base font-medium text-slate-900 bg-white hover:border-slate-500 focus:border-slate-600 focus:outline-none transition-all cursor-pointer"
-              >
-                <option value="all">Sort By</option>
-                <option value="asc">Price: Low to High</option>
-                <option value="desc">Price: High to Low</option>
-                <option value="newest">Newest</option>
-                <option value="oldest">Oldest</option>
-              </select>
+              <div className="grid grid-cols-3 gap-4">
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="px-4 py-3 border-2 border-slate-300 rounded-lg text-base font-medium text-slate-900 bg-white hover:border-slate-500 focus:border-slate-600 focus:outline-none transition-all cursor-pointer"
+                >
+                  <option value="All">All Categories</option>
+                  <option value="Man">Man</option>
+                  <option value="Women">Women</option>
+                </select>
 
-              <div className="flex items-center justify-center text-sm md:text-base font-semibold text-slate-700 bg-slate-100 rounded-lg py-3">
-                Found:{" "}
-                <span className="text-slate-900 mx-2">{items.length}</span>
-                results
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="px-4 py-3 border-2 border-slate-300 rounded-lg text-base font-medium text-slate-900 bg-white hover:border-slate-500 focus:border-slate-600 focus:outline-none transition-all cursor-pointer"
+                >
+                  <option value="all">Sort By</option>
+                  <option value="asc">Price: Low to High</option>
+                  <option value="desc">Price: High to Low</option>
+                  <option value="newest">Newest</option>
+                  <option value="oldest">Oldest</option>
+                </select>
+
+                <div className="flex items-center justify-center text-base font-semibold text-slate-700 bg-slate-100 rounded-lg py-3">
+                  Found:{" "}
+                  <span className="text-slate-900 mx-2">{items.length}</span>
+                  results
+                </div>
               </div>
             </div>
           </div>
